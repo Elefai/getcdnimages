@@ -108,3 +108,17 @@ jobs:
           body_path: release_body.md
           draft: false
           prerelease: false
+
+      - name: Fallback create release via REST
+        if: startsWith(github.ref, 'refs/tags/')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          jq -n --arg tag "$GITHUB_REF_NAME" \
+                --arg name "getcdnimages $GITHUB_REF_NAME" \
+                --arg body "$(cat release_body.md)" \
+                '{ tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false }' > payload.json
+          curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+               -X POST "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
+               -d @payload.json || true
