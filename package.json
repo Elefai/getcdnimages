@@ -1,0 +1,17 @@
+{
+  "name": "getcdnimages",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "cdn-dl": "bin/cdn-dl.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "cli": "node bin/cdn-dl.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

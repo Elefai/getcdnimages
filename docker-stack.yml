@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  getcdnimages:
+    image: your-registry.example.com/getcdnimages:latest
+    # If publishing outside Swarm overlay, map a port:
+    ports:
+      - target: 3000
+        published: 8080
+        protocol: tcp
+        mode: ingress
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 64M
+    networks:
+      - web
+
+networks:
+  web:
+    driver: overlay
+
