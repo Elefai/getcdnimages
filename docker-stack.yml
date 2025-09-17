@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   getcdnimages:
-    image: ghcr.io/Elefai/getcdnimages:latest
+    image: ghcr.io/elefai/getcdnimages:latest
     # If publishing outside Swarm overlay, map a port:
     ports:
       - target: 3000
