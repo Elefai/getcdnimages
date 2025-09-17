@@ -52,3 +52,55 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Prepare release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          case "$TAG" in
+            v1.0)
+              cat > release_body.md << 'EON'
+              Overview
+              - Initial stable release focused on downloading publicly viewable images that CDNs often block in plain API requests.
+
+              Highlights
+              - HTTP API `/image` (GET/POST) that forwards browser-like headers to fetch images that open in browsers but fail via simple GET.
+              - Streams binary with proper `content-disposition` support and optional filename.
+              - CLI `cdn-dl` for batch downloading.
+              - Dockerfile + Swarm stack sample.
+
+              Usage Tips
+              - Provide `referer`, `origin`, `header=Accept: ...`, `header=User-Agent: ...` and cookies when needed.
+              - Option `allowAny=1` to bypass content-type checks when the CDN mislabels responses.
+              EON
+              ;;
+            v1.1)
+              cat > release_body.md << 'EON'
+              Overview
+              - Logging and robustness improvements.
+
+              Added
+              - Structured request/response logs (one line JSON per request: start, upstream, done with bytes + ms).
+              - Browser-like defaults when not provided: `Accept` for images and a modern `User-Agent`.
+              - Content-type sniff (JPEG/PNG/WEBP/GIF) when upstream sends `text/plain`.
+
+              Notes
+              - Images published to GHCR with tags: `v1.1`, `1.1`, and `latest`.
+              EON
+              ;;
+            *)
+              cat > release_body.md << EON
+              Release ${TAG}
+              - Auto-generated build for ${TAG}.
+              - See README for API and usage details.
+              EON
+              ;;
+          esac
+
+      - name: Create/Update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: getcdnimages ${{ github.ref_name }}
+          body_path: release_body.md
