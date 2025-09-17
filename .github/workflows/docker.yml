@@ -30,10 +30,11 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute tags
+      - name: Compute tags (lowercase owner)
         id: meta
         run: |
-          REPO="ghcr.io/${{ github.repository_owner }}/getcdnimages"
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO="ghcr.io/${OWNER_LC}/getcdnimages"
           echo "repo=$REPO" >> $GITHUB_OUTPUT
           TAGS="$REPO:latest"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
@@ -50,4 +51,3 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
-
