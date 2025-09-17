@@ -39,7 +39,8 @@ jobs:
           TAGS="$REPO:latest"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             VER=${GITHUB_REF#refs/tags/}
-            TAGS="$TAGS,$REPO:$VER"
+            NO_V=${VER#v}
+            TAGS="$TAGS,$REPO:$VER,$REPO:$NO_V"
           fi
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
