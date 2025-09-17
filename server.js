@@ -1,6 +1,7 @@
 import http from 'node:http'
 import { Readable } from 'node:stream'
 import { Readable as NodeReadable } from 'node:stream'
+import crypto from 'node:crypto'
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000
 
@@ -64,6 +65,12 @@ function sanitizeFilename(name) {
   return String(name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')
 }
 
+function logLine(obj) {
+  try { console.log(JSON.stringify(obj)) } catch { /* noop */ }
+}
+
+function newReqId() { return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) }
+
 async function proxyImage(req, res, sp) {
   const url = sp.get('url')
   if (!url) return bad(res, 400, 'missing url parameter')
@@ -74,6 +81,9 @@ async function proxyImage(req, res, sp) {
   const cd = sp.get('contentDisposition') || 'inline' // or 'attachment'
   const overrideName = sp.get('filename')
   const timeoutMs = Math.min(Math.max(Number(sp.get('timeout') || 15000), 1_000), 120_000)
+  const reqId = newReqId()
+  const t0 = Date.now()
+  logLine({ level: 'info', ts: new Date().toISOString(), event: 'start', reqId, method: req.method, url, allowAny })
 
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), timeoutMs)
@@ -82,14 +92,16 @@ async function proxyImage(req, res, sp) {
     resp = await fetch(url, { headers, redirect: 'follow', signal: controller.signal })
   } catch (err) {
     clearTimeout(t)
+    logLine({ level: 'error', ts: new Date().toISOString(), event: 'error', reqId, stage: 'fetch', error: String(err) })
     return bad(res, 502, 'fetch error', { detail: String(err) })
   }
   clearTimeout(t)
 
   if (!resp.ok) {
+    logLine({ level: 'warn', ts: new Date().toISOString(), event: 'upstream', reqId, status: resp.status })
     return bad(res, 502, `upstream HTTP ${resp.status}`)
   }
-
+  
   // Sniff image type from magic bytes when upstream lies (e.g., text/plain)
   function sniffImageType(buf) {
     const b = buf
@@ -111,6 +123,7 @@ async function proxyImage(req, res, sp) {
       if (sniffed) outType = sniffed
     }
     if (!allowAny && (!outType || !outType.startsWith('image/'))) {
+      logLine({ level: 'warn', ts: new Date().toISOString(), event: 'reject', reqId, reason: 'unsupported content-type', upstreamType })
       return bad(res, 415, `unsupported content-type: ${upstreamType || 'unknown'}`)
     }
 
@@ -126,19 +139,27 @@ async function proxyImage(req, res, sp) {
     res.writeHead(200, headersOut)
 
     async function* gen() {
+      let bytes = 0
       if (firstChunk.length) yield firstChunk
+      bytes += firstChunk.length
       let r
       while (!(r = await reader.read()).done) {
-        yield Buffer.from(r.value)
+        const buf = Buffer.from(r.value)
+        bytes += buf.length
+        yield buf
       }
+      const ms = Date.now() - t0
+      logLine({ level: 'info', ts: new Date().toISOString(), event: 'done', reqId, status: 200, type: outType || upstreamType || 'unknown', bytes, ms })
     }
     const nodeStream = Readable.from(gen())
     nodeStream.on('error', (e) => {
+      logLine({ level: 'error', ts: new Date().toISOString(), event: 'error', reqId, stage: 'stream', error: String(e) })
       if (!res.headersSent) bad(res, 500, 'stream error', { detail: String(e) })
       else try { res.destroy(e) } catch {}
     })
     nodeStream.pipe(res)
   } catch (e) {
+    logLine({ level: 'error', ts: new Date().toISOString(), event: 'error', reqId, stage: 'setup', error: String(e) })
     if (!res.headersSent) return bad(res, 500, 'stream setup error', { detail: String(e) })
     try { res.destroy(e) } catch {}
   }
