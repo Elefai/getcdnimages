@@ -1,4 +1,4 @@
-getcdnimages — Downloader de Imagens via CDN
+# getcdnimages — Downloader de Imagens via CDN
 
 Descrição
 - Ferramenta de linha de comando para baixar imagens quando você já tem acesso (tokens/URLs válidos).
@@ -32,7 +32,7 @@ Exemplos
 Estrutura
 - `package.json`: metadados NPM e binário `cdn-dl`.
 - `bin/cdn-dl.js`: implementação do CLI (ESM, Node 18+).
- - `server.js`: API HTTP para proxy de imagens.
+- `server.js`: API HTTP para proxy de imagens.
 
 API HTTP — Documentação
 - Base URL (Swarm): `http://getcdnimages:3000` (nome do service) ou via published port `http://<manager>:8080`.
@@ -84,7 +84,7 @@ Docker
 
 Docker Swarm (stack)
 - Arquivo: `getcdnimages/docker-stack.yml`
-- Ajuste `image: your-registry.example.com/getcdnimages:latest`
+- Ajuste `image: ghcr.io/elefantemarketing/getcdnimages:latest` (ou seu registry)
 - Suba imagem para seu registry, depois:
   - `docker stack deploy -c docker-stack.yml getcdn`
 - Acesso interno (overlay): `http://getcdnimages:3000/image?url=...`
